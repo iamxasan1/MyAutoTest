@@ -11,6 +11,7 @@ namespace MyAutoTest.Services
     class QuestionService
     {
         private List<QuestionModel> _questions;
+        public string[] choiceName = {"A", "B", "C", "D", "E", "F"};  
         private readonly ITelegramBotClient _bot;
 
         public const int TicketQuestionCount = 5;  
@@ -54,7 +55,8 @@ namespace MyAutoTest.Services
             var choices = new List<List<InlineKeyboardButton>>();
             for (int i = 0; i < _questions[index].Choices.Count; i++)
             {
-                var choiceText = answer == null ? _questions[index].Choices[i].Text : _questions[index].Choices[(int)i].Text + _questions[index].Choices[i].Answer;
+                //var choiceText = answer == null ? _questions[index].Choices[i].Text : _questions[index].Choices[(int)i].Text + _questions[index].Choices[i].Answer;
+                var choiceText = choiceName[i];
                 var choiceButton = new List<InlineKeyboardButton>()
         {
             InlineKeyboardButton.WithCallbackData(choiceText, $"{index},{i}")
@@ -68,7 +70,11 @@ namespace MyAutoTest.Services
         public void SendQuestionByIndex(long chatId, int index)
         {
             var question = _questions[index];
-            var message = $"{question.Id}. {question.Question}";
+            var message = $"{question.Id}. {question.Question}\n";
+            for(int i = 0; i < _questions[index].Choices.Count; i++)
+            {
+                message += $"{choiceName[i]})  {_questions[index].Choices[i].Text}\n";
+            }
 
 
             if (question.Media.Exist)
