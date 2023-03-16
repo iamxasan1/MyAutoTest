@@ -1,13 +1,10 @@
 ﻿using JFA.Telegram.Console;
-using MyAutoTest.Models.Tickets;
 using MyAutoTest.Models.Users;
 using MyAutoTest.Services;
-using System;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using File = System.IO.File;
 using User = MyAutoTest.Models.Users.User;
 
 var botManager = new TelegramBotManager();
@@ -15,21 +12,31 @@ var bot = botManager.Create("6263742812:AAFoMdqXOo-Hl_LsZ4xWQB_nrmEJnBY4ibE");
 
 var questionService = new QuestionService(bot);
 var userService = new UserServices(questionService);
-
+userService.UzMenuList.Add("start test", "Testni Boshlash");
+userService.UzMenuList.Add("tickets", "Biletlar");
+userService.UzMenuList.Add("show result", "Natijalarni ko`rish");
+userService.UzMenuList.Add("choose language", "tilni tanlash");
+userService.RuMenuList.Add("start test", "Начать тест");
+userService.RuMenuList.Add("tickets", "Билеты");
+userService.RuMenuList.Add("show result", "Показать результаты");
+userService.RuMenuList.Add("choose language", "Выберите язык");
 
 botManager.Start(OnUpdate);
+
 void OnUpdate(Update update)
 {
-    
-
     var (chatId, message, name, isSucces) = GetMessage(update);
     if(!isSucces)
-    { return; }
+        return;
+
     var user = userService.AddUser(chatId, name);
+
+    questionService.ReadJson(user.language);
 
     switch (user.Step)
     {
-        case EUserStep.Default: SendMenu(user); break;
+        case EUserStep.Default: SendLanguageCode(user); break;
+        case EUserStep.ChooseLanguageSendMenu: SaveLanguageSendMenu(user, message); break;
         case EUserStep.InMenu: ChooseMenu(user, message); break;
         case EUserStep.InTest: CheckAnswer(user, message); break;
          
@@ -59,24 +66,33 @@ Tuple<long, string, string, bool>GetMessage(Update update)
 }
 
 
-void SendMenu(User user)
+void SendLanguageCode(User user)
 {
     var buttons = new List<List<KeyboardButton>>()
     {
         new List<KeyboardButton>()
         {
-            new KeyboardButton("Start Test")
+            new KeyboardButton("Uzbek 🇺🇿")
         },
          new List<KeyboardButton>()
         {
-            new KeyboardButton("Tickets")
+            new KeyboardButton("Russian 🇷🇺")
         },
-        new List<KeyboardButton>()
-        {
-            new KeyboardButton("Show Result")
-        }
     };
-    bot.SendTextMessageAsync(user.ChatId, "Menu",replyMarkup: new ReplyKeyboardMarkup(buttons));
+    bot.SendTextMessageAsync(user.ChatId, "choose-language",replyMarkup: new ReplyKeyboardMarkup(buttons));
+    userService.UpdateUserStep(user, EUserStep.ChooseLanguageSendMenu);
+}
+void SendMenu(User user, ITelegramBotClient bot)
+{
+    if(user.language == "uzbek 🇺🇿")
+    {
+        userService.ShowMenuUz(user, bot);
+    }
+    if(user.language == "russian 🇷🇺")
+    {
+        userService.ShowMenuRu(user, bot);
+    }
+    
     userService.UpdateUserStep(user, EUserStep.InMenu);
 }
 
@@ -84,15 +100,21 @@ void ChooseMenu(User user, string message)
 {
     switch (message)
     {
-        case "Start Test": StartTest(user); break; 
-        case "Tickets": SHowTickets(user); break; 
-        case "Show Result": ShowResult(user); break;
+        case "Testni Boshlash": StartTest(user); break; 
+        case "Начать тест": StartTest(user); break; 
+        case "Biletlar": SHowTickets(user); break; 
+        case "Билеты": SHowTickets(user); break; 
+        case "Natijalarni ko`rish": ShowResult(user); break;
+        case "Показать результаты": ShowResult(user); break;
+        case "tilni tanlash": SendLanguageCode(user); break;
+        case "Выберите язык": SendLanguageCode(user); break;
         case "Start":
             {
                 userService.UpdateUserStep(user, EUserStep.InTest);
                 SendTicketQuestion(user);
             }
             break;
+
     }
     if (message.StartsWith("start-ticket"))
     {
@@ -123,7 +145,6 @@ void SendTicketQuestion(User user)
     questionService.SendQuestionByIndex(user.ChatId, user.CurrentTicket.CurrentQuestionIndex);
    
 }
-
 void CheckAnswer(User user, string message)
 {
 
@@ -136,7 +157,6 @@ void CheckAnswer(User user, string message)
         if (answer)
             user.CurrentTicket.CorrectCount++;
         user.CurrentTicket.CurrentQuestionIndex++;
-
 
         if (user.CurrentTicket.IsCompleted)
         {
@@ -154,15 +174,10 @@ void CheckAnswer(User user, string message)
     {
 
         Console.WriteLine(e.Message);
-    }
-
-    
+    }   
 }
-
 void SHowTickets(User user, int page = 1)
 {
-
-
     var pagesCount = questionService.TicketCount / 5;
     var message = $"Tickets\n{page}/{pagesCount}";
     var buttons = new List<List<InlineKeyboardButton>>();
@@ -196,6 +211,7 @@ List<InlineKeyboardButton> CreatePaginationButtons(int pagesCount, int page)
 
     if(page > 1)
         buttons.Add(InlineKeyboardButton.WithCallbackData($"<", $"page{page-1}"));
+
     if(pagesCount > page)
         buttons.Add(InlineKeyboardButton.WithCallbackData($"{page}", $"page{page}"));
     if(pagesCount - 1 > page)
@@ -229,4 +245,11 @@ void StartTicket(User user, int ticketIndex)
         replyMarkup: new InlineKeyboardMarkup(InlineKeyboardButton.WithCallbackData("Start")));
 }
 
+
+void SaveLanguageSendMenu(User user, string LangCode)
+{
+    userService.SetUsetLanguage(user, LangCode);
+    userService.SaveUserjson();
+    SendMenu(user, bot);
+}
 

@@ -5,6 +5,7 @@ using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot;
 using MyAutoTest.Models.Tickets;
 
+
 namespace MyAutoTest.Services
 {
     class QuestionService
@@ -13,13 +14,35 @@ namespace MyAutoTest.Services
         private readonly ITelegramBotClient _bot;
 
         public const int TicketQuestionCount = 5;  
-        public int QuestionsCount { get { return _questions.Count; } }
+        public int QuestionsCount 
+        { 
+            get 
+            {
+                return _questions.Count; 
+            } 
+        }
+
         public int TicketCount { get { return QuestionsCount / TicketQuestionCount; } }
+
         public QuestionService(ITelegramBotClient bot) 
         {
             _bot = bot;
             var json = File.ReadAllText("uz.json");
-            _questions = JsonConvert.DeserializeObject<List<QuestionModel>>(json);
+            _questions = JsonConvert.DeserializeObject<List<QuestionModel>>(json)!;
+        }
+
+        public void ReadJson(string lang)
+        {
+            if (lang == null || lang == "uzbek 🇺🇿")
+            {
+                var json = File.ReadAllText("uz.json");
+                _questions = JsonConvert.DeserializeObject<List<QuestionModel>>(json)!;
+            }
+            if (lang == "russian 🇷🇺")
+            {
+                var json = File.ReadAllText("rus.json");
+                _questions = JsonConvert.DeserializeObject<List<QuestionModel>>(json)!;
+            }
         }
 
         public bool QuestionAnswer(int questionIndex, int choiceIndex)

@@ -16,5 +16,6 @@ namespace MyAutoTest.Models.Users
         {
             Tickets = new List<Ticket>();
         }
+        public string language { get; set; }
     }
 }
